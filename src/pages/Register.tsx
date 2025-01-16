@@ -15,6 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Header } from "@/components/Header";
+import { supabase } from "@/integrations/supabase/client";
+import { AuthError } from "@supabase/supabase-js";
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -45,18 +47,31 @@ const Register = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual registration logic here
-      console.log("Registration values:", values);
-      toast({
-        title: "Registration successful!",
-        description: "You can now log in to your account.",
+      const { data, error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: {
+            full_name: values.fullName,
+          },
+        },
       });
-      navigate("/login");
+
+      if (error) throw error;
+
+      if (data.user) {
+        toast({
+          title: "Registration successful!",
+          description: "Please check your email to verify your account.",
+        });
+        navigate("/");
+      }
     } catch (error) {
+      const authError = error as AuthError;
       toast({
         variant: "destructive",
         title: "Registration failed",
-        description: "Please try again later.",
+        description: authError.message || "Please try again later.",
       });
     } finally {
       setIsLoading(false);
@@ -67,8 +82,13 @@ const Register = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Student Registration</h1>
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Create your STUDY-DO Account</h1>
+            <p className="text-muted-foreground mt-2">
+              Join our platform to start learning or teaching
+            </p>
+          </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
@@ -111,10 +131,20 @@ const Register = () => {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Registering..." : "Register"}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
           </Form>
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Button
+              variant="link"
+              className="p-0 h-auto font-normal"
+              onClick={() => navigate("/login")}
+            >
+              Sign in
+            </Button>
+          </p>
         </div>
       </main>
     </div>
